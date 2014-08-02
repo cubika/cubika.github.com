@@ -71,6 +71,189 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Custom-Elements" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/08/02/Custom-Elements/" class="article-date">
+  <time datetime="2014-08-02T05:41:03.000Z" itemprop="datePublished">8月 2 2014</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2014/08/02/Custom-Elements/">Custom Elements</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>Custom Elements是<strong>Web Components</strong>中的一部分，通过它我们可以创建自定义的标签元素，而不用再使用大量的<code>div</code>了。明显自定义标签元素具有更好的可读性，但是它带来的好处不仅如此，同时还会有更好的封装和维护性。首先不妨看一下比较正式的正式：</p>
+<blockquote>
+<p>Custom elements are new types of DOM elements that can be defined by authors. Unlike decorators, which are stateless and ephemeral, custom elements can encapsulate state and provide script interfaces.</p>
+</blockquote>
+<h1 id="基本用法">基本用法</h1>
+<h2 id="注册">注册</h2>
+<p>在使用自定义元素之前，我们要通过Javascript进行元素的注册：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="keyword">var</span> XFoo = document.registerElement(<span class="string">'x-foo'</span>, {
+  prototype: <span class="built_in">Object</span>.create(HTMLElement.prototype)
+});
+</pre></td></tr></table></figure><br>可以看到，自定义元素的注册主要是通过<code>registerElement</code>这个方法完成的，第一个参数是自定义元素的名字，第二个参数可以用来描述元素的原型。这里继承的是HTMLElement。且需要注意的是，自定义标签元素的名字必须有<code>-</code>，如<code>x-foo</code>，否则的话就不是一个合法的自定义标签。<br>如果我们想要对自定义元素进行扩展，我们直接操作prototype就好了，比如新加两个属性，<code>foo</code>和<code>bar</code>：<br><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="code"><pre><span class="keyword">var</span> XFoo = document.registerElement(<span class="string">'x-foo'</span>, {
+  prototype: <span class="built_in">Object</span>.create(HTMLElement.prototype, {
+    bar: {
+      get: <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span> <span class="keyword">return</span> <span class="number">5</span>; }
+    },
+    foo: {
+      value: <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+        alert(<span class="string">'foo() called'</span>);
+      }
+    }
+  })
+});
+</pre></td></tr></table></figure><br>或者是分开来写：<br><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="keyword">var</span> XFooProto = <span class="built_in">Object</span>.create(HTMLElement.prototype);
+XFooProto.foo = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  alert(<span class="string">'foo() called'</span>);
+};
+<span class="built_in">Object</span>.defineProperty(XFooProto, <span class="string">"bar"</span>, {value: <span class="number">5</span>});
+<span class="keyword">var</span> XFoo = document.registerElement(<span class="string">'x-foo'</span>, {prototype: XFooProto});
+</pre></td></tr></table></figure><br>除了添加属性和方法之外，我们还可以指定不同的生命周期回调，这些回调会在自定义元素的不同阶段被调用：<br>1. <strong>createdCallback</strong>: 在元素创建的时候被调用<br>2. <strong>attachedCallback：</strong>在元素被插入到文档中的时候被调用<br>3. <strong>detachedCallback</strong>： 在元素从文档中被移除的时候被调用<br>4. <strong>attributeChangedCallback(attrName, oldVal, newVal)</strong>： 在元素的属性发生变化时被调用<br>因此，我们可以覆盖这些回调，比如：<br><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="keyword">var</span> proto = <span class="built_in">Object</span>.create(HTMLElement.prototype);
+
+XFooProto.createdCallback = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">this</span>.innerHTML = <span class="string">"&lt;b&gt;I'm an x-foo-with-markup!&lt;/b&gt;"</span>;
+};
+
+<span class="keyword">var</span> XFoo = document.registerElement(<span class="string">'x-foo'</span>, {prototype: proto});
+</pre></td></tr></table></figure>
+
+<p>这样，<code>x-foo</code>标签里面就有了内容。</p>
+<h2 id="使用">使用</h2>
+<p>注册了自己的标签元素之后，我们就可以使用了。创建一个新的自定义元素有两种方式：<br>    1.我们可以在HTML中直接进行声明；<br>    2.我们也可以在Javascript中动态的创建。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="comment">// 直接声明</span>
+<span class="subst">&lt;</span>x<span class="attribute">-foo</span><span class="subst">&gt;&lt;</span>/x<span class="attribute">-foo</span><span class="subst">&gt;</span>
+
+<span class="comment">// 通过Javascript创建</span>
+<span class="built_in">var</span> xFoo <span class="subst">=</span> document<span class="built_in">.</span>createElement(<span class="string">'x-foo'</span>);
+document<span class="built_in">.</span>body<span class="built_in">.</span>appendChild(<span class="literal">new</span> xFoo());
+</pre></td></tr></table></figure><br>除了直接创建我们的自定义标签，还可以在html原有的标签之上进行扩展，如：<br><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="comment">// 直接声明</span>
+&lt;button <span class="keyword">is</span>=<span class="string">"mega-button"</span>&gt;
+
+<span class="comment">// 通过Javascript创建</span>
+<span class="keyword">var</span> megaButton = document.createElement(<span class="string">'button'</span>, <span class="string">'mega-button'</span>);
+document.body.appendChild(<span class="keyword">new</span> megaButton());
+</pre></td></tr></table></figure>
+
+<h1 id="使用Shadow_DOM进行封装">使用Shadow DOM进行封装</h1>
+<p>为了把自定义标签的灵活可读和Shadow DOM的良好封装结合起来，我们可以在createdCallback中加入Shadow DOM的有关代码：</p>
+<p><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="code"><pre><span class="tag">&lt;<span class="title">template</span> <span class="attribute">id</span>=<span class="value">"sdtemplate"</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">style</span>&gt;</span><span class="css">
+    <span class="tag">p</span> <span class="rules">{ <span class="rule"><span class="attribute">color</span>:<span class="value"> orange</span></span>; <span class="rule">}</span></span>
+  </span><span class="tag">&lt;/<span class="title">style</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">p</span>&gt;</span>I'm in Shadow DOM. My markup was stamped from a &lt;template&gt;.<span class="tag">&lt;/<span class="title">p</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">template</span>&gt;</span>
+
+<span class="tag">&lt;<span class="title">script</span>&gt;</span><span class="javascript">
+<span class="keyword">var</span> proto = <span class="built_in">Object</span>.create(HTMLElement.prototype, {
+  createdCallback: {
+    value: <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+      <span class="keyword">var</span> t = document.querySelector(<span class="string">'#sdtemplate'</span>);
+      <span class="keyword">var</span> clone = document.importNode(t.content, <span class="literal">true</span>);
+      <span class="keyword">this</span>.createShadowRoot().appendChild(clone);
+    }
+  }
+});
+document.registerElement(<span class="string">'x-foo-from-template'</span>, {prototype: proto});
+</span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+</pre></td></tr></table></figure><br>我们做了这么几件事：</p>
+<ol>
+<li>注册了一个新的元素： <code>x-foo-from-template</code></li>
+<li>在元素创建时，会寻找页面中的一个<code>template</code>标签元素</li>
+<li>创建一个<code>ShadowRoot</code>，并且把template元素的内容放到里面</li>
+<li>Shadow DOM中的元素会以特定的样式渲染，这里就是将文字的颜色变为橘色</li>
+</ol>
+<p>也就是说，每当我们创建一个<code>x-foo-from-template</code>自定义标签元素时，里面都会带有一个Shadow DOM。如果这个标签元素实现了特定的功能，并且可以复用，那这个标签就是一个web组件，而且我们把这个组件的细节很好的封装到了Shadow DOM里面。</p>
+<p>最后，如果一个自定义标签在还没有被注册就已经被声明了，那么这个元素就处于<strong>unresolved</strong>状态。这种状态也可以通过css的伪类<code>:unresolved</code>来进行查询。<br>此外，<code>document.registerElment</code>方法已经被Chrome 31+完全支持。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="1dxgmsnm257drn20" class="article-share-link">分享到</a>
+      
+        <a href="http://yoursite.com/2014/08/02/Custom-Elements/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/webcomponent/">webcomponent</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Shadow-DOM" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2014/08/02/Shadow-DOM/" class="article-date">
@@ -321,7 +504,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="avirrwa8cuuijdnw" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="61mi04yp16qlf2d1" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Shadow-DOM/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -346,7 +529,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">标签</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">1</span></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">2</span></li></ul>
     </div>
   </div>
 
@@ -355,7 +538,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">2</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">3</span></li></ul>
     </div>
   </div>
 
@@ -365,6 +548,10 @@
     <h3 class="widget-title">近期文章</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2014/08/02/Custom-Elements/">Custom Elements</a>
+          </li>
         
           <li>
             <a href="/2014/08/02/Shadow-DOM/">Shadow DOM</a>
