@@ -125,7 +125,7 @@ body,
 }
 body {
   background: #eee;
-  font: 14px/1.6em "微软雅黑", "Microsoft Yahei", "Droid Sans", Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 14px/2em "Trebuchet MS", Georgia, Helvetica Neue, Helvetica, Arial, sans-serif;
   -webkit-text-size-adjust: 100%;
 }
 .outer {
@@ -343,7 +343,7 @@ body {
 .article-entry dl,
 .widget dl {
   margin: 0 20px;
-  line-height: 1.6em;
+  line-height: 2em;
 }
 .article-entry ul ul,
 .widget ul ul,
@@ -561,7 +561,7 @@ body {
   background: none;
   color: #000;
   width: 100%;
-  font: 13px "微软雅黑", "Microsoft Yahei", "Droid Sans", Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 13px "Trebuchet MS", Georgia, Helvetica Neue, Helvetica, Arial, sans-serif;
   outline: none;
 }
 .search-form-input::-webkit-search-results-decoration,
@@ -649,8 +649,8 @@ a.article-title:hover {
 }
 .article-entry p,
 .article-entry table {
-  line-height: 1.6em;
-  margin: 1.6em 0;
+  line-height: 2em;
+  margin: 2em 0;
 }
 .article-entry h1,
 .article-entry h2,
@@ -679,8 +679,8 @@ a.article-title:hover {
 .article-entry ul,
 .article-entry ol,
 .article-entry dl {
-  margin-top: 1.6em;
-  margin-bottom: 1.6em;
+  margin-top: 2em;
+  margin-bottom: 2em;
 }
 .article-entry img,
 .article-entry video {
@@ -709,15 +709,15 @@ a.article-title:hover {
 .article-entry blockquote {
   font-family: "Droid Serif", Georgia, Serif;
   font-size: 1.4em;
-  margin: 1.6em 0;
+  margin: 2em 0;
   padding: 0 0.8em;
   border-left: 4px solid #ddd;
   color: #777;
 }
 .article-entry blockquote footer {
   font-size: 14px;
-  margin: 1.6em 0;
-  font-family: "微软雅黑", "Microsoft Yahei", "Droid Sans", Helvetica Neue, Helvetica, Arial, sans-serif;
+  margin: 2em 0;
+  font-family: "Trebuchet MS", Georgia, Helvetica Neue, Helvetica, Arial, sans-serif;
 }
 .article-entry blockquote footer cite:before {
   content: "—";
@@ -780,9 +780,9 @@ a.article-title:hover {
 .article-footer {
   zoom: 1;
   font-size: 0.85em;
-  line-height: 1.6em;
+  line-height: 2em;
   border-top: 2px solid #ddd;
-  padding-top: 1.6em;
+  padding-top: 2em;
   margin: 0 20px 20px;
 }
 .article-footer:before,
@@ -903,7 +903,7 @@ a.article-title:hover {
 }
 .article-nav-title {
   font-size: 0.85em;
-  line-height: 1.6em;
+  line-height: 2em;
   margin-top: 0.5em;
 }
 .article-share-box {
@@ -927,7 +927,7 @@ a.article-title:hover {
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
-  font: 14px "微软雅黑", "Microsoft Yahei", "Droid Sans", Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 14px "Trebuchet MS", Georgia, Helvetica Neue, Helvetica, Arial, sans-serif;
   padding: 0 15px;
   color: #000;
   outline: none;
@@ -1103,7 +1103,7 @@ a.article-title:hover {
   -o-transition: color 0.2s;
   -ms-transition: color 0.2s;
   transition: color 0.2s;
-  line-height: 1.6em;
+  line-height: 2em;
 }
 .archive-article-title:hover {
   color: #e32d40;
@@ -1187,7 +1187,7 @@ a.article-title:hover {
   text-decoration: underline;
 }
 #footer-info {
-  line-height: 1.6em;
+  line-height: 2em;
   font-size: 0.85em;
 }
 .article-entry pre,
@@ -1200,7 +1200,7 @@ a.article-title:hover {
   border-width: 1px 0;
   overflow: auto;
   color: #f8f8f2;
-  line-height: 22.400000000000002px;
+  line-height: 28px;
 }
 .article-entry .highlight .gutter pre,
 .article-entry .gist .gist-file .gist-data .line-numbers {
@@ -1262,7 +1262,7 @@ a.article-title:hover {
   padding-right: 20px;
 }
 .article-entry .highlight .line {
-  height: 22.400000000000002px;
+  height: 28px;
 }
 .article-entry .gist {
   margin: 0 -20px;
@@ -1297,7 +1297,7 @@ a.article-title:hover {
 .article-entry .gist .gist-file .gist-meta {
   background: #272822;
   color: #75715e;
-  font: 0.85em "微软雅黑", "Microsoft Yahei", "Droid Sans", Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 0.85em "Trebuchet MS", Georgia, Helvetica Neue, Helvetica, Arial, sans-serif;
   text-shadow: 0 0;
   padding: 0;
   margin-top: 1em;
@@ -1435,7 +1435,7 @@ pre .javascript .function {
   list-style: disc;
 }
 .widget {
-  line-height: 1.6em;
+  line-height: 2em;
   word-wrap: break-word;
   font-size: 0.9em;
 }

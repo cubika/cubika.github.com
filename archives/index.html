@@ -71,6 +71,233 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Start-Using-X-Tag" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/08/02/Start-Using-X-Tag/" class="article-date">
+  <time datetime="2014-08-02T08:03:59.000Z" itemprop="datePublished">8月 2 2014</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2014/08/02/Start-Using-X-Tag/">Start Using X-Tag</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="为什么要使用X-Tag">为什么要使用X-Tag</h1>
+<p>经过前面两篇文章的介绍，我们已经初步领略到了Web Components的优势。但是就目前的情形来看，除了Chrome 31+以上，Web Components还没有很好的被支持。X-Tag就是一个polyfill的小型Javascript库，通过它，我们能够在现代的浏览器中使用自定义标签元素。除此之外，它还能让我们创建Custom Element的时候变得很方便。X-Tag的官网是：<a href="http://www.x-tags.org/" target="_blank" rel="external">http://www.x-tags.org/</a></p>
+<h1 id="使用X-Tag创建自定义标签元素">使用X-Tag创建自定义标签元素</h1>
+<p>首先来看一下官网的一个例子：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+</pre></td><td class="code"><pre>xtag.register(<span class="string">'x-accordion'</span>, {
+  <span class="comment">// extend existing elements</span>
+  <span class="keyword">extends</span>: <span class="string">'div'</span>,
+  lifecycle:{
+    created: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// fired once at the time a component</span>
+      <span class="comment">// is initially created or parsed</span>
+    },
+    inserted: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// fired each time a component</span>
+      <span class="comment">// is inserted into the DOM</span>
+    },
+    removed: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// fired each time an element</span>
+      <span class="comment">// is removed from DOM</span>
+    },
+    attributeChanged: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// fired when attributes are set</span>
+    }
+  },
+  events: {
+    <span class="string">'click:delegate(x-toggler)'</span>: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// activate a clicked toggler</span>
+    }
+  },
+  accessors: {
+    <span class="string">'togglers'</span>: {
+      <span class="keyword">get</span>: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+        <span class="comment">// return all toggler children</span>
+      },
+      <span class="keyword">set</span>: <span class="function"><span class="keyword">function</span><span class="params">(value)</span>{</span>
+        <span class="comment">// set the toggler children</span>
+      }
+    }
+  },
+  methods: {
+    nextToggler: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// activate the next toggler</span>
+    },
+    previousToggler: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+      <span class="comment">// activate the previous toggler</span>
+    }
+  }
+});
+</pre></td></tr></table></figure><br>我们可以看到，使用<code>xtag.register</code>方法可以快速创建一个<code>x-</code>开头的标签:<br>第一个部分是<strong>lifecycle</strong>，这里面对应了上篇文章提到的不同的生命周期对应的状态，从名字就可以看出来，所以就不多说了。<br>第二个部分是<strong>events</strong>，顾名思义也就是用来存放事件的地方：<br>第三个部分是<strong>accessors</strong>，它用来定义新添加的字段，以及这些元素字段之上的getter和setter方法。此外，还可以设置元素本身的属性，这时设置的就是<code>accessors: attribute</code>：<br><figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre>xtag.register(<span class="string">'x-superinput'</span>, {
+  accessors: {
+    enabled: {
+      <span class="built_in">attribute</span>: { boolean: true } <span class="comment">// enabled是一个属性，也就是&lt;x-superinput enabled="true"&gt;</span>
+    },
+    lastName: {
+      <span class="built_in">attribute</span>: { name:<span class="string">'last-name'</span> } <span class="comment">// 另一个属性</span>
+    }
+  }
+});
+</pre></td></tr></table></figure>
+
+<p>第四个部分是<strong>methods</strong>，顾名思义，就是为创建的对象上添加一些方法。<br>还有三个可以配置的部分：</p>
+<ul>
+<li><strong>extends</strong>: 代表标签扩展自哪一个已经存在的标签，可以使用HTML已有的标签名，如”div, span, input”</li>
+<li><strong>prototype</strong>: 设置prototype的值，一般而言是<code>Object.create(HTMLDivElement.prototype)</code></li>
+<li><strong>mixins</strong>: 是一个数组，里面是方法名，可以通过xtag.mixins对象进行设置新的minxin</li>
+</ul>
+<h2 id="Helper方法">Helper方法</h2>
+<p>作为一个Javascript Library，X-Tag提供了多个帮助方法：</p>
+<ul>
+<li><code>toArray(obj)</code>: 将给的对象转化为数组，这里的对象不是自定义标签元素对象，而是任何一个array-like object</li>
+<li><code>hasClass(element,className)/addClass/removeClass/toggleClass</code>: 对元素的class名进行操作，你懂得</li>
+<li><code>matchSelector(element, selector)</code>: 判断一个元素是否匹配一个selector，返回Boolean</li>
+<li><code>query(element, selector)</code>: 类似于各种选择器</li>
+<li><code>queryChildren(element, selector)</code>: 只在元素的直接子元素上进行查找</li>
+<li><code>requestFrame</code>: 原话是：<em> Returns an animation frame </em></li>
+<li><code>createFragment(element/string)</code>: 创建一个documentFragment，也就是一个或多个相邻的Document节点和它们所有的子节点</li>
+<li><code>wrap(fn1, fn2)</code>： 返回一个新的函数，会依次调用传入的两个函数</li>
+<li><code>innerHTML(element, html)</code>: 为元素element设置innerHTML为html参数值</li>
+<li><code>fireEvent(element,eventType,object)</code>: 触发一个事件</li>
+<li><code>addEvent(element,eventType,function)</code>: 添加一个事件</li>
+<li><code>addEvents(element,object)</code>: 添加多个事件</li>
+</ul>
+<h2 id="伪类">伪类</h2>
+<p>伪类可以用于访问器、事件和方法中。伪类的形式为：<strong>普通事件:delegate</strong>或<strong>*键盘事件：keypass</strong> 即将某一个事件委托给符合参数的元素</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="code"><pre>xtag.register(<span class="string">'x-foo'</span>, {
+    lifecycle: {
+      created: <span class="function"><span class="keyword">function</span><span class="params">()</span>{</span>
+        <span class="keyword">this</span>.innerHTML = <span class="string">'&lt;a&gt;HI&lt;/a&gt;'</span>;
+      }
+    },
+    events: {
+      <span class="string">'click:delegate(a)'</span>: <span class="function"><span class="keyword">function</span><span class="params">(e)</span>{</span>
+        console.log(<span class="string">'a clicked'</span>, <span class="keyword">this</span>);
+      }
+    }
+  });
+
+  xtag.addEvent(input, <span class="string">'keydown:keypass(13,27)'</span>, <span class="function"><span class="keyword">function</span><span class="params">(e)</span>{</span>
+    <span class="comment">// 'enter' or 'esc' pressed</span>
+  });
+</pre></td></tr></table></figure>
+
+<p>上面的例子中增加了一个点击事件，并委托给了这个自定义标签元素里面的链接，这样，相当于为里面的a标签绑定了事件处理函数。</p>
+<h2 id="模板">模板</h2>
+<p>模板template中的元素会被转化为<code>DocumentFragment</code>对象，并且可以通过模板元素的content属性得到这个对象，然后通过<code>cloneNode()</code>方法创建新的实例。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="tag">&lt;<span class="title">template</span> <span class="attribute">id</span>=<span class="value">"test-template"</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">div</span>&gt;</span>test<span class="tag">&lt;/<span class="title">div</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">template</span>&gt;</span>
+
+var t = document.getElementById('test-template');
+document.body.appendChild(t.content.cloneNode());
+</pre></td></tr></table></figure>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/08/02/Start-Using-X-Tag/" data-id="llza7hban43qnszh" class="article-share-link">分享到</a>
+      
+        <a href="http://yoursite.com/2014/08/02/Start-Using-X-Tag/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/webcomponent/">webcomponent</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Custom-Elements" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2014/08/02/Custom-Elements/" class="article-date">
@@ -240,7 +467,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="1dxgmsnm257drn20" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="oodgauv9yjoqzvos" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Custom-Elements/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -504,7 +731,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="61mi04yp16qlf2d1" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="xcqu2nja4x52ox5i" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Shadow-DOM/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -570,7 +797,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="uq1pj10o9vt3jawk" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="baq4ux0wpf3pbwda" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/hello-world/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -593,7 +820,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">标签</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">2</span></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">3</span></li></ul>
     </div>
   </div>
 
@@ -602,7 +829,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">3</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">4</span></li></ul>
     </div>
   </div>
 
@@ -612,6 +839,10 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
     <h3 class="widget-title">近期文章</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2014/08/02/Start-Using-X-Tag/">Start Using X-Tag</a>
+          </li>
         
           <li>
             <a href="/2014/08/02/Custom-Elements/">Custom Elements</a>
