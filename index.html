@@ -71,6 +71,69 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-【译】：为什么Web-Components还不适合于生产环境" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/08/11/【译】：为什么Web-Components还不适合于生产环境/" class="article-date">
+  <time datetime="2014-08-11T11:05:06.000Z" itemprop="datePublished">8月 11 2014</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2014/08/11/【译】：为什么Web-Components还不适合于生产环境/">【译】：为什么Web Components还不适合于生产环境</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>原文地址：<a href="http://developer.telerik.com/featured/web-components-arent-ready-production-yet/" target="_blank" rel="external">http://developer.telerik.com/featured/web-components-arent-ready-production-yet/</a><br>Web Components已经成为新的话题热点，由于Chrome 36已经完全实现了web components，我们终于可以有一个稳定的版本去使用它。虽然web components非常令人激动，但是这并不意味着它已经适合生产环境了。</p>
+<h2 id="浏览器支持">浏览器支持</h2>
+<p>最显著的问题就是浏览器支持，虽然chrome 36上已经完全实现了，但是在Firefox上仅仅是部分实现，IE和Safari上压根就没有实现。因为浏览器支持是一个非常漫长的过程，因此，我们会在很长的一段时间内不得不依靠polyfill来在其他浏览器上使用。<br>好消息是Polymer团队已经维护了一整套这种polyfill脚本，并取名为<em>Platform</em>。虽然官网上说，你所做的仅仅就是引入一个<code>platform.js</code>，但是事实上没有你想的那么简单。</p>
+<h2 id="所有的polyfill实现起来难度不同">所有的polyfill实现起来难度不同</h2>
+<p>虽然polyfill都叫做polyfill，但是它们的复杂程度却不尽相同。比如，有些polyfill仅仅是一些语法糖的实现，可以依赖已有的API去很容易实现，如<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind#Compatibility" target="_blank" rel="external">Function.prototype.bind</a>,或者<a href="https://github.com/remy/polyfills/blob/6e87470526c496c0fc53fa87ed5a825eff61f1f3/classList.js" target="_blank" rel="external">classList</a>,这些的代码行数非常少。<br>然而，如果是一些比较新的特性，或者是涉及到了CSS语法，就比较难写了。比如<a href="https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events" target="_blank" rel="external">pointer events</a>。因为它依赖于<code>touch-action</code>这个属性，但是如果浏览器不支持它，就会直接将它忽略掉。因此实现起来就比较困难。Polymer会要求你将<code>touch-action</code>作为一个元素属性，而微软的polyfill则直接进行了对所有设定样式的标签的内容进行搜索的过程，这显然会对性能上产生影响。<br>事实上，对Web components进行polyfill是十分困难的。下面是几个例子。</p>
+<h3 id="web_components中疯狂的polyfill">web components中疯狂的polyfill</h3>
+<p>首先，考虑一下如何polyfill Shadow DOM。因为Shadow DOM中的内容是不能使用<code>querySelector</code>和<code>querySelectorAll</code>来查找到的，但是我们怎么样才能实现后达到这个效果？想想都觉得很难。但是事实却是polymer做到了这一点，它是如何做的呢？</p>
+<p>事实就是，polymer封装了大量的DOM方法，<a href="https://github.com/Polymer/ShadowDOM/blob/master/src/wrappers/Document.js" target="_blank" rel="external">至少25个</a>，同时为<a href="https://github.com/Polymer/ShadowDOM/tree/master/src/wrappers" target="_blank" rel="external">超过30个</a>元素提供了将元素从DOM中移除，然后保留在内部的列表中的接口。<br>Shadow DOM的规范中也定义了为Shadow DOM中的元素进行暴露或者选择的CSS接口。因为浏览器对于它不理解的CSS选择器会直接丢掉，因此我们不得不去对<code>style</code>和<code>&lt;link rel=&quot;stylesheet&quot;&gt;</code>标签中的内容进行搜索。platform.js中关于里面的正则表达式有<a href="https://github.com/Polymer/platform-dev/blob/fe5427b747e5bca3dde9ba891cb33d279faff3f9/src/ShadowCSS.js#L544-581" target="_blank" rel="external">38行</a>之多，你可以体会一下是多么的复杂。<br><img src="http://developer.telerik.com/wp-content/uploads/2014/07/687474703a2f2f692e696d6775722e636f6d2f473659467072742e706e67.png" alt=""></p>
+<h2 id="我们为什么要关心它">我们为什么要关心它</h2>
+<h3 id="并非所有的特性都被polyfill了">并非所有的特性都被polyfill了</h3>
+<p>但是，既然Google已经完成了这项很艰难的工作，我们为什么还要关心它有多难呢？因为它的复杂程度也会影响到生产环境中的使用。比如：并不是所有的内容都被polyfill了，尤其是有关于Shadow DOM中的一些规范。Shadow CSS中说到：</p>
+<blockquote>
+<p>“The intention here is to support only the styling features which can be relatively simply implemented. The goal is to allow users to avoid the most obvious pitfalls and do so without compromising performance significantly.”</p>
+</blockquote>
+<p>尽管它说很简单，我们可不这么想。因为polyfill Shadow DOM实际上意味着使用Javascript来重写CSS,显然这么做有些过了。</p>
+<p>对于web开发人员来说比较尴尬的是，他们不知道究竟哪些能用，哪些又因为没有被实现不能用，比如下图中，对于Shadow DOM中h1的样式设置，在Chrome和Safari中就有所区别：<br><img src="/image/differ.png" alt=""><br>左图中外部的css设置明显影响到了Shadow DOM中的元素的样式。</p>
+<h3 id="文件大小">文件大小</h3>
+<p>另一方面就是，polyfill的代码行数多导致文件很大。对于平台的polyfill在没压缩前达到151KB,压缩后也有44KB。如果使用了Polymer，还要再增加20KB大小。<br>Polymer做的很好的一点就是它把polyfill分成了一个一个模块，这样你就可以有选择的使用。但是实际上使用中却不是这样，因为所有的polymer 元素，以及<a href="http://customelements.io/" target="_blank" rel="external">http://customelements.io/</a>上的大部分元素，都依赖整个Polymer，也就是要有所有的平台的polyfill才行。</p>
+<h3 id="性能原因">性能原因</h3>
+<p>Polymer还没有做有关性能的测试，不可避免的是因为有这些polyfill存在，速度上不会很快。另外，使用了HTML imports也会导致很多的请求。尽管HTML import本身的想法很好，即每一个都是一个完整的组件，包含了相关的模板，CSS和Javascript代码等等，但是如果一个依赖于多个其他的资源，那么每一个资源都会导致一个请求的产生。<br>在Chrome中，由于本地支持HTML import，它能够使用并行的连接以及<a href="http://www.html5rocks.com/en/tutorials/internals/howbrowserswork/#Speculative_parsing" target="_blank" rel="external">推测性的解析算法</a>去优化整个加载过程，但是在其他浏览器中，因为无法做到这点，只能靠<code>XHR</code>来完成了。<br>还有，如果是在一个网络环境很慢的移动设备上，即使是访问一个web component的demo也会变得很慢。比如在IOS手机上访问polymer官网就是一个例子。<br>好的消息是，有些工具正试图解决这样的问题，比如<a href="https://github.com/Polymer/vulcanize" target="_blank" rel="external">Vulcanize</a>构建工具，你可以传递给他一个HTML文件，它能够分析出HTML import的依赖关系，最后把它们内联到一个文件中。比如，你可以传入一个index.html，然后构建为一个built.html：</p>
+<p><figure class="highlight"><table><tr><td class="gutter"><pre>1
+</pre></td><td class="code"><pre>vulcanize -o built<span class="preprocessor">.html</span> index<span class="preprocessor">.html</span>
+</pre></td></tr></table></figure><br>还有很多类似的工具，虽然很好，但是你不得不事先去做大量的调研工作。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/08/11/【译】：为什么Web-Components还不适合于生产环境/" data-id="2qlj7wyrce43pxo4" class="article-share-link">分享到</a>
+      
+        <a href="http://yoursite.com/2014/08/11/【译】：为什么Web-Components还不适合于生产环境/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/webcomponent/">webcomponent</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-【译】：创建自己的AngularJS应用----Scope和Digest" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/" class="article-date">
@@ -85,7 +148,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">[译]：创建自己的AngularJS应用 -- Scope和Digest</a>
+      <a class="article-title" href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">【译】：创建自己的AngularJS应用 -- Scope和Digest</a>
     </h1>
   
 
@@ -631,7 +694,7 @@ Scope.prototype.$evalAsync = <span class="function"><span class="keyword">functi
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/" data-id="t590eo5hp56l44fe" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/" data-id="5go6599bynz2i27k" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -902,7 +965,7 @@ Scope.prototype.$evalAsync = <span class="function"><span class="keyword">functi
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/" data-id="q4q39uy3h26ybppg" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/" data-id="lvijqvdm4d31cz2e" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1237,7 +1300,7 @@ tabs.addEventListener(<span class="string">'core-select'</span>, <span class="fu
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/03/Polymer-Getting-Started/" data-id="3dq2zgcya39t91kt" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/03/Polymer-Getting-Started/" data-id="t7x4wk830nm47kxg" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/03/Polymer-Getting-Started/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1464,7 +1527,7 @@ document.body.appendChild(t.content.cloneNode());
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Start-Using-X-Tag/" data-id="9pvina9jc4kkvbyv" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Start-Using-X-Tag/" data-id="txgjjeg05z0xx6ps" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Start-Using-X-Tag/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1647,7 +1710,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="tgkuxee0sicarxwk" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="tavbagyru450sl9c" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Custom-Elements/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1911,7 +1974,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="4ooom7s2lpsj6vju" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="7jzels0l2b4xffxe" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Shadow-DOM/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1977,7 +2040,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="6kjlshdgfjs1vj6g" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="ef6wx5maui69jubb" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/hello-world/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -2000,7 +2063,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">标签</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/framework/">framework</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">4</span></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/framework/">framework</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">5</span></li></ul>
     </div>
   </div>
 
@@ -2009,7 +2072,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">7</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">8</span></li></ul>
     </div>
   </div>
 
@@ -2021,7 +2084,11 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       <ul>
         
           <li>
-            <a href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">[译]：创建自己的AngularJS应用 -- Scope和Digest</a>
+            <a href="/2014/08/11/【译】：为什么Web-Components还不适合于生产环境/">【译】：为什么Web Components还不适合于生产环境</a>
+          </li>
+        
+          <li>
+            <a href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">【译】：创建自己的AngularJS应用 -- Scope和Digest</a>
           </li>
         
           <li>
@@ -2034,10 +2101,6 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
         
           <li>
             <a href="/2014/08/02/Start-Using-X-Tag/">Start Using X-Tag</a>
-          </li>
-        
-          <li>
-            <a href="/2014/08/02/Custom-Elements/">Custom Elements</a>
           </li>
         
       </ul>
