@@ -71,6 +71,580 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-【译】：创建自己的AngularJS应用----Scope和Digest" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/" class="article-date">
+  <time datetime="2014-08-11T03:43:50.000Z" itemprop="datePublished">8月 11 2014</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">[译]：创建自己的AngularJS应用 -- Scope和Digest</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>原文地址：<a href="http://teropa.info/blog/2013/11/03/make-your-own-angular-part-1-scopes-and-digest.html" target="_blank" rel="external">http://teropa.info/blog/2013/11/03/make-your-own-angular-part-1-scopes-and-digest.html</a><br>Angular是一个非常成熟并且强大的框架，同时有很多新的思想。然而使用者通常会遇到一些相似的问题：digest究竟是什么？创建一个directive有几种方法？service和provider有什么区别？<br>在这篇文章中，将从头搭建一个Angular的实现，这样，在这个过程中，我们会对Angular如何工作有一个更深的认知。</p>
+<p>首先我们要看的就是<code>scope</code>以及<code>$eval,$digest,$apply</code>是如何工作的。对于一些基本操作，我们使用<a href="http://lodash.com/" target="_blank" rel="external">Lo-Dash</a>这个库。虽然Angular本身并不使用它，但是我们可以避免很多底层代码。在程序中，它的变量名是一个下划线<code>_</code>，就像underscore那样。<br>最后，我们会使用<code>console.assert</code>来进行一些基本测试。关于Lo-Dash和console.assert的用法可以看一下下面的例子：</p>
+<iframe src="http://jsbin.com/UGOVUk/4/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="Scope对象">Scope对象</h2>
+<p>Angular中的Scope是原生的Javascript对象，我们可以在之上增加一些属性。同时我们也可以自己通过构造函数去创建一个scope:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="keyword">var</span> aScope = <span class="keyword">new</span> Scope();
+aScope.firstName = <span class="string">'Jane'</span>;
+aScope.lastName = <span class="string">'Smith'</span>;
+</pre></td></tr></table></figure>
+
+<p>就是很简单的对象属性，没有什么特殊的。</p>
+<h2 id="使用$watch和$digest监测对象的属性">使用$watch和$digest监测对象的属性</h2>
+<p><code>$watch</code>和<code>$digest</code>两者并肩合作，共同解决了对数据的变化做出响应的问题。<br><code>watcher</code>能够在scope里的数据变化发生时得到通知，而<code>$watch</code>方法则用来创建一个watcher，创建时有两个参数：</p>
+<ul>
+<li><em>watcher function</em>：表明了你所感兴趣的数据有哪些，在Angular中，更多的是使用一个表达式来完成，如<code>user.firstName</code></li>
+<li><em>listener function</em>： 数据变化时采取什么样的操作<br>所有的watch方法会被保留在一个数组中。当一个变量以<strong>$$</strong>来开头时，表明它对框架本身是私有的，因此不能在应用的代码中出现。<br>现在我们定义自己的$watch方法，它会接收两个函数作为参数，同时保存到$$watchers数组中。由于我们希望所有的scope都有这个方法，因此我们会将它添加到原型中：<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="code"><pre><span class="function"><span class="keyword">function</span> <span class="title">Scope</span><span class="params">()</span> {</span>
+  <span class="keyword">this</span>.$$watchers = [];
+}
+
+Scope.prototype.$watch = <span class="function"><span class="keyword">function</span><span class="params">(watchFn, listenerFn)</span> {</span>
+  <span class="keyword">var</span> watcher = {
+    watchFn: watchFn,
+    listenerFn: listenerFn
+  };
+  <span class="keyword">this</span>.$$watchers.push(watcher);
+};
+
+Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  _.forEach(<span class="keyword">this</span>.$$watchers, <span class="function"><span class="keyword">function</span><span class="params">(watch)</span> {</span>
+    watch.listenerFn();
+  });
+};
+</pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>digest方法的实现就是执行所有注册过的watch方法。下面例子体现了到目前为止的功能：</p>
+<iframe src="http://jsbin.com/oMaQoxa/2/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="检查脏数据">检查脏数据</h2>
+<p>watch函数通常要返回那些我们感兴趣的数据，这些数据是在scope这个范围当中的，因此，通常scope会作为watch函数的一个参数，然后从scope中拉取一些数据并返回。如：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="function"><span class="keyword">function</span><span class="params">(scope)</span> {</span>
+  <span class="keyword">return</span> scope.firstName;
+}
+</pre></td></tr></table></figure>
+
+<p>$digest函数的作用是调用watch函数，将它返回值和上次的值进行比对，如果发生了变化，就说明这个watcher是脏的，这样相应的listener需要被调用。这里我们实现上则直接使用一个<code>last</code>属性来保存上次的值：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="code"><pre>Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  _.forEach(<span class="keyword">this</span>.$$watchers, <span class="function"><span class="keyword">function</span><span class="params">(watch)</span> {</span>
+    <span class="keyword">var</span> newValue = watch.watchFn(self);
+    <span class="keyword">var</span> oldValue = watch.last;
+    <span class="keyword">if</span> (newValue !== oldValue) {
+      watch.listenerFn(newValue, oldValue, self);
+      watch.last = newValue;
+    }
+  });
+};
+</pre></td></tr></table></figure>
+
+<p>对每一个watcher来说，我们调用它，将scope作为参数。然后比对返回值和last属性的值。如果变化，则调用对应的listener。最后，重新赋值last属性。<br>有了这个实现，我们就可以检测数据变化了：</p>
+<iframe src="http://jsbin.com/OsITIZu/5/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<p>我们已经看到Angular的Scope上有一些重要的性能特点：</p>
+<ul>
+<li>如果仅仅在Scope上修改数据，如果没有watcher来监控它，UI层并不会变化。而且，属性不一定必须在Scope中，事实上，Angular检测的是所有的watch，而不是scope上的所有属性。</li>
+<li>每一次$digest都会调用watch函数。因此需要注重一下我们所拥有的watch函数的数目，因为这样会影响到性能。</li>
+</ul>
+<h2 id="从digest中得到通知">从digest中得到通知</h2>
+<p>如果你只是想要在digest过程中得到通知，也就是只是想在每一次digest时做些处理，但并不是监控数据，那么你可以将listener函数置空。由于我们并不想监测什么，我们的watch函数不返回内容就行了，这样watch的对象始终就是<code>undefined</code>:</p>
+<iframe src="http://jsbin.com/OsITIZu/6/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<p>我们已经实现了一些核心内容，但这还远远不够。例如，有个场景就是，在listener函数中，我们仍然改变了数据，并且这些数据有对应的watcher，这样对应watcher的listener则不会被调用：</p>
+<iframe src="http://jsbin.com/eTIpUyE/3/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="如果数据是脏的，则一直digest">如果数据是脏的，则一直digest</h2>
+<p>为了解决上面的问题，我们需要一直进行检测，直到所有的数据都不再变化为止。<br>首先，需要将上面的$digest函数重构为$digestOnce函数，也就是只运行一次所有的watcher，并且我们还要返回是不是有的数据值变了，也就是出现了脏值的情况。<br>然后，我们还要写一个循环，循环中一直调用$digestOnce，直到没有脏值为止。由于使用了do-while，因此至少会执行一轮代码。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre></td><td class="code"><pre>Scope.prototype.$$digestOnce = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> self  = <span class="keyword">this</span>;
+  <span class="keyword">var</span> dirty;
+  _.forEach(<span class="keyword">this</span>.$$watchers, <span class="function"><span class="keyword">function</span><span class="params">(watch)</span> {</span>
+    <span class="keyword">var</span> newValue = watch.watchFn(self);
+    <span class="keyword">var</span> oldValue = watch.last;
+    <span class="keyword">if</span> (newValue !== oldValue) {
+      watch.listenerFn(newValue, oldValue, self);
+      dirty = <span class="literal">true</span>;
+      watch.last = newValue;
+    }
+  });
+  <span class="keyword">return</span> dirty;
+};
+
+Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> dirty;
+  <span class="keyword">do</span> {
+    dirty = <span class="keyword">this</span>.$$digestOnce();
+  } <span class="keyword">while</span> (dirty);
+};
+</pre></td></tr></table></figure>
+
+<p>接下来我们再运行上面的例子就不会有原来的问题了。<br>我们需要意识到，watch本身在一次digest过程中可能会运行多次。任何一个watch都不应该有副作用。如果一个watch函数里面做了一次ajax请求，但是实际上，我们无法保证究竟发出了多少请求。因为watch可能被调用了多次，对应的请求也发出了多次，这样就有了副作用，我们就要好好想想watch应不应该这样写。<br>上述实现有一个明显的漏洞：如果两个watch相互检测怎么办？这样的话，就没有一个稳定的状态了。比如，我们把下面例子的scope.digest给取消注释试一试：</p>
+<iframe src="http://jsbin.com/eKEvOYa/4/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<p>在我自己的机器上，运行一会页面就卡住了，因为cpu一直在运行这个循环。</p>
+<h2 id="对于不稳定的digest，采取放弃策略">对于不稳定的digest，采取放弃策略</h2>
+<p>放弃是指循环需要设置一个上限，如果到了这个上限，仍然不稳定，我们只能抛出一个异常了。这个上限值通常叫做TTL(Time To Live)，默认值是10。也许你认为它太小了，那么你要注意下这个值和性能有很大的关系，通常情况下我们不需要10次以上的检查。实现起来就是这样：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre>Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> ttl = <span class="number">10</span>;
+  <span class="keyword">var</span> dirty;
+  <span class="keyword">do</span> {
+    dirty = <span class="keyword">this</span>.$$digestOnce();
+    <span class="keyword">if</span> (dirty && !(ttl--)) {
+      <span class="keyword">throw</span> <span class="string">"10 digest iterations reached"</span>;
+    }
+  } <span class="keyword">while</span> (dirty);
+};
+</pre></td></tr></table></figure>
+
+<iframe src="http://jsbin.com/uNapUWe/3/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="基于属性值的脏检查">基于属性值的脏检查</h2>
+<p>目前为止我们实现比较时使用的是<strong> === </strong>操作符，通常情况下这没有问题，但是有时候我们要比较的是object内部或者array内部的值，这样我们要检测的就不是引用了，而是真正的值。这种类型的检测我们可以通过传入第三个参数来进行标记：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre>Scope.prototype.$watch = <span class="function"><span class="keyword">function</span><span class="params">(watchFn, listenerFn, valueEq)</span> {</span>
+  <span class="keyword">var</span> watcher = {
+    watchFn: watchFn,
+    listenerFn: listenerFn,
+    valueEq: !!valueEq
+  };
+  <span class="keyword">this</span>.$$watchers.push(watcher);
+};
+</pre></td></tr></table></figure>
+
+<p>我们把第三个参数转换为了Boolean，这样，当用户没有传入第三个参数的时候，它就是false。<br>基于属性值的检测方案意味着我们必须对数据进行遍历，从而发现它包含的内容是否发生变化。这里，我们借用了Lo-Dash的<code>isEqual</code>方法简化实现：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre>Scope.prototype.$$areEqual = <span class="function"><span class="keyword">function</span><span class="params">(newValue, oldValue, valueEq)</span> {</span>
+  <span class="keyword">if</span> (valueEq) {
+    <span class="keyword">return</span> _.isEqual(newValue, oldValue);
+  } <span class="keyword">else</span> {
+    <span class="keyword">return</span> newValue === oldValue;
+  }
+};
+</pre></td></tr></table></figure>
+
+<p>之前我们保存的last是引用地址，这样一来比较的始终是引用地址，数据变化了之后last也会跟着变化。因此我们需要做的就是一次深拷贝操作，所以我们需要更新一下实现：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class="code"><pre>Scope.prototype.$$digestOnce = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> self  = <span class="keyword">this</span>;
+  <span class="keyword">var</span> dirty;
+  _.forEach(<span class="keyword">this</span>.$$watchers, <span class="function"><span class="keyword">function</span><span class="params">(watch)</span> {</span>
+    <span class="keyword">var</span> newValue = watch.watchFn(self);
+    <span class="keyword">var</span> oldValue = watch.last;
+    <span class="keyword">if</span> (!self.$$areEqual(newValue, oldValue, watch.valueEq)) {
+      watch.listenerFn(newValue, oldValue, self);
+      dirty = <span class="literal">true</span>;
+      watch.last = (watch.valueEq ? _.cloneDeep(newValue) : newValue);
+    }
+  });
+  <span class="keyword">return</span> dirty;
+};
+</pre></td></tr></table></figure>
+
+<iframe src="http://jsbin.com/ARiWENO/4/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<p>基于属性值的检测方案不仅涉及到了更多的操作，而且遍历复杂的数据结构可能会消耗时间，同时深拷贝也会占据内存空间。所以默认的不会采用这种方案。</p>
+<h2 id="NaN">NaN</h2>
+<p>在Javascript中，我们知道<code>NaN</code>代表Not a Number，它是不等于自身的(<code>NaN!==NaN 为true</code>)。基于这个事实，如果一个watch返回了NaN，那么脏值检查将无休止。<br>对于基于值的脏检查策略来说，我们已经可以通过Lo-Dash的<code>isEqual</code>方法避免它，但是对于基于引用的策略来说，我们需要处理一下：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="code"><pre>Scope.prototype.$$areEqual = <span class="function"><span class="keyword">function</span><span class="params">(newValue, oldValue, valueEq)</span> {</span>
+  <span class="keyword">if</span> (valueEq) {
+    <span class="keyword">return</span> _.isEqual(newValue, oldValue);
+  } <span class="keyword">else</span> {
+    <span class="keyword">return</span> newValue === oldValue ||
+      (<span class="keyword">typeof</span> newValue === <span class="string">'number'</span> && <span class="keyword">typeof</span> oldValue === <span class="string">'number'</span> &&
+       <span class="built_in">isNaN</span>(newValue) && <span class="built_in">isNaN</span>(oldValue));
+  }
+};
+</pre></td></tr></table></figure>
+
+<p>这样，NaN就不会有什么问题了：</p>
+<iframe src="http://jsbin.com/ijINaRA/3/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="$eval：在scope上下文中执行代码">$eval：在scope上下文中执行代码</h2>
+<p><code>$eval</code>是Angular中在scope中运行代码的最简单的方法。它使用一个函数作为参数，并且把scope传递给这个函数，然后立马执行它。$eval的返回就是那个函数参数的返回。同时还有一个可选的参数，$eval会将它原封不动的传给第一个函数参数。<br>无论是实现还是使用都是非常明了的：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre>Scope.prototype.$<span class="built_in">eval</span> = <span class="function"><span class="keyword">function</span><span class="params">(expr, locals)</span> {</span>
+  <span class="keyword">return</span> expr(<span class="keyword">this</span>, locals);
+};
+</pre></td></tr></table></figure>
+
+
+<iframe src="http://jsbin.com/UzaWUC/3/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<p>为什么我们会使用这种看似迂回的方式去调用一个函数呢？因为相比于直接调用一个函数，$eval看起来更加的明确，它就是为了在scope上下文中执行一些代码的。同时，我们不仅仅可以传递函数，也可以传递表达式，表达式会被编译后运行。最后，$eval也是$apply实现的基石。</p>
+<h2 id="$apply：将运行外部代码和digest生命周期整合一起">$apply：将运行外部代码和digest生命周期整合一起</h2>
+<p>如果我们想要将外部的库整合到Angular中，$apply可能是一种常见的做法，它将一个函数作为参数，执行它，然后开始$digest周期。简单来说就是这样：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre>Scope.prototype.$apply = <span class="function"><span class="keyword">function</span><span class="params">(expr)</span> {</span>
+  <span class="keyword">try</span> {
+    <span class="keyword">return</span> <span class="keyword">this</span>.$<span class="built_in">eval</span>(expr);
+  } <span class="keyword">finally</span> {
+    <span class="keyword">this</span>.$digest();
+  }
+};
+</pre></td></tr></table></figure>
+
+<p>$apply起到的作用是，它可以执行一些Angular本身并不认识的代码。并且如果这些代码对数据产生了变化，我们也更新它。</p>
+<iframe src="http://jsbin.com/UzaWUC/4/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="$evalAsync：延迟执行">$evalAsync：延迟执行</h2>
+<p>在Angular中，我们想要延迟代码执行，可以使用<code>$timeout</code>这个服务，也可使用<code>$evalAsync</code>，它接收一个函数作为参数，这个函数会在下次digest时执行，如果当前digest在进行中，则在当前digest时执行。总之就是延迟执行。<br>为了实现它，需要将所有延迟的任务保存到一个数组中，然后在digest时逐个调用这个数组中的函数。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+</pre></td><td class="code"><pre><span class="function"><span class="keyword">function</span> <span class="title">Scope</span><span class="params">()</span> {</span>
+  <span class="keyword">this</span>.$$watchers = [];
+  <span class="keyword">this</span>.$$asyncQueue = [];
+}
+
+Scope.prototype.$evalAsync = <span class="function"><span class="keyword">function</span><span class="params">(expr)</span> {</span>
+  <span class="keyword">this</span>.$$asyncQueue.push({scope: <span class="keyword">this</span>, expression: expr});
+};
+
+Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> ttl = <span class="number">10</span>;
+  <span class="keyword">var</span> dirty;
+  <span class="keyword">do</span> {
+    <span class="keyword">while</span> (<span class="keyword">this</span>.$$asyncQueue.length) {
+      <span class="keyword">var</span> asyncTask = <span class="keyword">this</span>.$$asyncQueue.shift();
+      <span class="keyword">this</span>.$<span class="built_in">eval</span>(asyncTask.expression);
+    }
+    dirty = <span class="keyword">this</span>.$$digestOnce();
+    <span class="keyword">if</span> (dirty && !(ttl--)) {
+      <span class="keyword">throw</span> <span class="string">"10 digest iterations reached"</span>;
+    }
+  } <span class="keyword">while</span> (dirty);
+};
+</pre></td></tr></table></figure>
+
+<p>这样就可以延迟运行了：</p>
+<iframe src="http://jsbin.com/ilepOwI/2/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="scope的几个阶段">scope的几个阶段</h2>
+<p>$evalAsync的另一个作用是，调度一次$digest，也就是说，可以肯定很快会有一次$digest。<br>我们需要知道当前$digest是否在进行中，因为如果$digest正在进行中的话，那就没有必要再调度一次$digest了。Angular中就有一个字符串属性<em>phase</em>，它存储了当前是哪一个阶段。<br>为了主动设定一个阶段，我们实现两个函数:<code>$beginPhase</code>和<code>$clearPhase</code>。只有当当前不处于任何阶段的情况下，才可以设置一个新的阶段。<br>然后，在$digest函数中，我们就可以设置和清除digest阶段了。同理，$apply里面也要进行添加。最后，$evalAsync里面，需要查看状态，只有不在任何阶段时，才进行一次调度：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+</pre></td><td class="code"><pre><span class="function"><span class="keyword">function</span> <span class="title">Scope</span><span class="params">()</span> {</span>
+  <span class="keyword">this</span>.$$watchers = [];
+  <span class="keyword">this</span>.$$asyncQueue = [];
+  <span class="keyword">this</span>.$$phase = <span class="literal">null</span>;
+}
+
+Scope.prototype.$beginPhase = <span class="function"><span class="keyword">function</span><span class="params">(phase)</span> {</span>
+  <span class="keyword">if</span> (<span class="keyword">this</span>.$$phase) {
+    <span class="keyword">throw</span> <span class="keyword">this</span>.$$phase + <span class="string">' already in progress.'</span>;
+  }
+  <span class="keyword">this</span>.$$phase = phase;
+};
+
+Scope.prototype.$clearPhase = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">this</span>.$$phase = <span class="literal">null</span>;
+};
+
+Scope.prototype.$digest = <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+  <span class="keyword">var</span> ttl = <span class="number">10</span>;
+  <span class="keyword">var</span> dirty;
+  <span class="keyword">this</span>.$beginPhase(<span class="string">"$digest"</span>);
+  <span class="keyword">do</span> {
+    <span class="keyword">while</span> (<span class="keyword">this</span>.$$asyncQueue.length) {
+      <span class="keyword">var</span> asyncTask = <span class="keyword">this</span>.$$asyncQueue.shift();
+      <span class="keyword">this</span>.$<span class="built_in">eval</span>(asyncTask.expression);
+    }
+    dirty = <span class="keyword">this</span>.$$digestOnce();
+    <span class="keyword">if</span> (dirty && !(ttl--)) {
+      <span class="keyword">this</span>.$clearPhase();
+      <span class="keyword">throw</span> <span class="string">"10 digest iterations reached"</span>;
+    }
+  } <span class="keyword">while</span> (dirty);
+  <span class="keyword">this</span>.$clearPhase();
+};
+
+Scope.prototype.$apply = <span class="function"><span class="keyword">function</span><span class="params">(expr)</span> {</span>
+  <span class="keyword">try</span> {
+    <span class="keyword">this</span>.$beginPhase(<span class="string">"$apply"</span>);
+    <span class="keyword">return</span> <span class="keyword">this</span>.$<span class="built_in">eval</span>(expr);
+  } <span class="keyword">finally</span> {
+    <span class="keyword">this</span>.$clearPhase();
+    <span class="keyword">this</span>.$digest();
+  }
+};
+
+Scope.prototype.$evalAsync = <span class="function"><span class="keyword">function</span><span class="params">(expr)</span> {</span>
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  <span class="keyword">if</span> (!self.$$phase && !self.$$asyncQueue.length) {
+    setTimeout(<span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+      <span class="keyword">if</span> (self.$$asyncQueue.length) {
+        self.$digest();
+      }
+    }, <span class="number">0</span>);
+  }
+  self.$$asyncQueue.push({scope: self, expression: expr});
+};
+</pre></td></tr></table></figure>
+
+<p>现在，我们可以确保肯定会进入到digest里面了。</p>
+<iframe src="http://jsbin.com/iKeSaGi/2/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="$$postDigest_-_在digest阶段之后执行代码">$$postDigest - 在digest阶段之后执行代码</h2>
+<p>$$postDigest的意思是，digest之后会被调度执行，和$evalAsync一样，也要有一个数组来保存需要执行的东西。这里名字中含有两个<code>$</code>符，是说明它是一个内部的方法。</p>
+<iframe src="http://jsbin.com/IMEhowO/5/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="异常处理">异常处理</h2>
+<p>Angular的scope是非常健壮的，当watch函数，$evalAsync函数或者是$$postDigest函数里面跑出了异常，并不会中端digest操作。但是我们现在的实现却有这个问题。我们简单起见，将代码包裹在try-catch里面，但是Angular中，实际上有一个<code>$exceptionHandler</code>来负责处理异常的。</p>
+<iframe src="http://jsbin.com/IMEhowO/6/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="销毁一个watch">销毁一个watch</h2>
+<p>有些情况下你会希望销毁一个特定的watch。在Angular中，watch函数有一个返回值，它也是一个函数，并且调用后会把这个watch给销毁掉。所以我们也这样去做：</p>
+<p><figure class="highlight javascript"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="code"><pre>Scope.prototype.$watch = <span class="function"><span class="keyword">function</span><span class="params">(watchFn, listenerFn, valueEq)</span> {</span>
+  <span class="keyword">var</span> self = <span class="keyword">this</span>;
+  <span class="keyword">var</span> watcher = {
+    watchFn: watchFn,
+    listenerFn: listenerFn,
+    valueEq: !!valueEq
+  };
+  self.$$watchers.push(watcher);
+  <span class="keyword">return</span> <span class="function"><span class="keyword">function</span><span class="params">()</span> {</span>
+    <span class="keyword">var</span> index = self.$$watchers.indexOf(watcher);
+    <span class="keyword">if</span> (index &gt;= <span class="number">0</span>) {
+      self.$$watchers.splice(index, <span class="number">1</span>);
+    }
+  };
+};
+</pre></td></tr></table></figure></p>
+<iframe src="http://jsbin.com/IMEhowO/7/embed?js,console" class="jsbin-embed" id="" style="border: 1px solid rgb(170, 170, 170); width: 100%; min-height: 300px; height: 208px;"></iframe>
+
+<h2 id="更进一步">更进一步</h2>
+<p>我们已经实现了一些基本的功能，但是事实上Angular中包含的还有很多。比如，scope可以有继承关系，子scope可以watch父scope中的变化。虽然这很简单，但是给很多初学者往往带来困惑。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/" data-id="9n4b1r5e17i21hpf" class="article-share-link">分享到</a>
+      
+        <a href="http://yoursite.com/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/framework/">framework</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-【译】：Throne-of-JS会议华山论剑之Javascript富应用" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/" class="article-date">
@@ -328,7 +902,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/" data-id="4h0vbiwepc8jv2zo" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/" data-id="jkzwmgb5w4khm4rh" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -663,7 +1237,7 @@ tabs.addEventListener(<span class="string">'core-select'</span>, <span class="fu
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/03/Polymer-Getting-Started/" data-id="z6stvt9ydy7sz0uj" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/03/Polymer-Getting-Started/" data-id="gtqixaw1o11o7d1p" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/03/Polymer-Getting-Started/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -890,7 +1464,7 @@ document.body.appendChild(t.content.cloneNode());
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Start-Using-X-Tag/" data-id="tmh3tu06hkck0nsv" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Start-Using-X-Tag/" data-id="dbg5exnjkpqegkac" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Start-Using-X-Tag/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1073,7 +1647,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="ld9zsyy91yv2btb5" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Custom-Elements/" data-id="goy3gusqe2coabdg" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Custom-Elements/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1337,7 +1911,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="cadlzf527sqj0hn5" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/Shadow-DOM/" data-id="pxmadx35dmj832wd" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/Shadow-DOM/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1403,7 +1977,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="bjzanehgws20q3k5" class="article-share-link">分享到</a>
+      <a data-url="http://yoursite.com/2014/08/02/hello-world/" data-id="6dq2ri8xyy5vphcv" class="article-share-link">分享到</a>
       
         <a href="http://yoursite.com/2014/08/02/hello-world/#disqus_thread" class="article-comment-link">Comments</a>
       
@@ -1426,7 +2000,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">标签</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/framework/">framework</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">4</span></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/framework/">framework</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/webcomponent/">webcomponent</a><span class="tag-list-count">4</span></li></ul>
     </div>
   </div>
 
@@ -1435,7 +2009,7 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">6</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/08">August 2014</a><span class="archive-list-count">7</span></li></ul>
     </div>
   </div>
 
@@ -1445,6 +2019,10 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
     <h3 class="widget-title">近期文章</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2014/08/11/【译】：创建自己的AngularJS应用----Scope和Digest/">[译]：创建自己的AngularJS应用 -- Scope和Digest</a>
+          </li>
         
           <li>
             <a href="/2014/08/09/【译】：Throne-of-JS会议华山论剑之Javascript富应用/">【译】：Throne of JS会议华山论剑之Javascript富应用</a>
@@ -1460,10 +2038,6 @@ document.registerElement(<span class="string">'x-foo-from-template'</span>, {pro
         
           <li>
             <a href="/2014/08/02/Custom-Elements/">Custom Elements</a>
-          </li>
-        
-          <li>
-            <a href="/2014/08/02/Shadow-DOM/">Shadow DOM</a>
           </li>
         
       </ul>
